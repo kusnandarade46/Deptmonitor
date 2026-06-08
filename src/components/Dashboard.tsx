@@ -66,11 +66,11 @@ export default function Dashboard({ tasks, filterDept }: DashboardProps) {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         
         {/* Pie Chart */}
-        <div className="bg-white p-5 border border-slate-200 shadow-sm col-span-1 flex flex-col">
+        <div className="bg-white p-5 border border-slate-200 shadow-sm col-span-1 flex flex-col min-h-[350px]">
           <h3 className="text-xs font-bold text-slate-700 uppercase tracking-widest mb-4 border-l-4 border-indigo-600 pl-3">Distribusi Status</h3>
-          <div className="h-64 flex-1">
+          <div className="flex-1 w-full min-h-[250px]">
             <ResponsiveContainer width="100%" height="100%">
-              <PieChart>
+              <PieChart margin={{ top: 0, right: 0, left: 0, bottom: 20 }}>
                 <Pie
                   data={dataStatus}
                   cx="50%"
@@ -86,31 +86,31 @@ export default function Dashboard({ tasks, filterDept }: DashboardProps) {
                   ))}
                 </Pie>
                 <Tooltip contentStyle={{ fontSize: '12px', border: '1px solid #e2e8f0', borderRadius: '0' }} />
-                <Legend iconType="square" wrapperStyle={{ fontSize: '10px', fontWeight: 'bold', textTransform: 'uppercase' }} />
+                <Legend iconType="square" wrapperStyle={{ fontSize: '10px', fontWeight: 'bold', textTransform: 'uppercase', paddingTop: '20px' }} />
               </PieChart>
             </ResponsiveContainer>
           </div>
         </div>
 
         {/* Bar Chart */}
-        <div className="bg-white p-5 border border-slate-200 shadow-sm col-span-1 lg:col-span-2 flex flex-col">
+        <div className="bg-white p-5 border border-slate-200 shadow-sm col-span-1 lg:col-span-2 flex flex-col min-h-[350px]">
           <h3 className="text-xs font-bold text-slate-700 uppercase tracking-widest mb-4 border-l-4 border-indigo-600 pl-3">
             {filterDept === 'All' ? 'Distribusi Tugas per Departemen & Status' : 'Kinerja Staf (Distribusi Status)'}
           </h3>
-          <div className="h-64 flex-1 mt-4">
+          <div className="flex-1 w-full min-h-[250px] mt-4">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart
                 data={barData}
-                margin={{ top: 20, right: 0, left: -20, bottom: 5 }}
+                margin={{ top: 20, right: 10, left: -20, bottom: 20 }}
               >
                 <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
-                <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 10, fontWeight: 'bold', fill: '#64748b' }} />
-                <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: '#94a3b8' }} />
+                <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 10, fontWeight: 'bold', fill: '#64748b' }} dy={10} />
+                <YAxis allowDecimals={false} axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: '#94a3b8' }} />
                 <Tooltip cursor={{ fill: '#f8fafc' }} contentStyle={{ fontSize: '12px', border: '1px solid #e2e8f0', borderRadius: '0' }} />
-                <Legend iconType="square" wrapperStyle={{ fontSize: '10px', fontWeight: 'bold', textTransform: 'uppercase' }} />
-                <Bar dataKey="Open" stackId="a" fill="#94a3b8" />
-                <Bar dataKey="On Progress" stackId="a" fill="#4f46e5" />
-                <Bar dataKey="Closed" stackId="a" fill="#10b981" />
+                <Legend iconType="square" wrapperStyle={{ fontSize: '10px', fontWeight: 'bold', textTransform: 'uppercase', paddingTop: '20px' }} />
+                <Bar dataKey="Open" fill="#94a3b8" radius={[2, 2, 0, 0]} />
+                <Bar dataKey="On Progress" fill="#4f46e5" radius={[2, 2, 0, 0]} />
+                <Bar dataKey="Closed" fill="#10b981" radius={[2, 2, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>
           </div>

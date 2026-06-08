@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { LayoutDashboard, CheckSquare, List, BarChart3, Plus, Bell, LogOut, ChevronDown } from 'lucide-react';
+import { LayoutDashboard, CheckSquare, List, BarChart3, Plus, Bell, LogOut, ChevronDown, User } from 'lucide-react';
 import Dashboard from './components/Dashboard';
 import KanbanBoard from './components/KanbanBoard';
 import TableView from './components/TableView';
@@ -14,6 +14,7 @@ export default function App() {
   const [viewDepartment, setViewDepartment] = useState<string>('All');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingTask, setEditingTask] = useState<Task | undefined>(undefined);
+  const [isEditingProfile, setIsEditingProfile] = useState(false);
   const [nameInput, setNameInput] = useState('');
   const [roleInput, setRoleInput] = useState('Staff');
   const [deptInput, setDeptInput] = useState('Finance');
@@ -35,11 +36,21 @@ export default function App() {
     setIsSaving(true);
     try {
       await registerUser(nameInput, roleInput, roleInput === 'Director' ? 'All' : deptInput);
+      setIsEditingProfile(false);
     } catch (e: any) {
       console.error(e);
       setSaveError('Gagal menyimpan profil. Coba lagi.');
     } finally {
       setIsSaving(false);
+    }
+  };
+
+  const handleOpenProfileEdit = () => {
+    if (currentUser) {
+      setNameInput(currentUser.name);
+      setRoleInput(currentUser.role);
+      setDeptInput(currentUser.department);
+      setIsEditingProfile(true);
     }
   };
 
@@ -71,24 +82,26 @@ export default function App() {
     );
   }
 
-  if (!currentUser) {
+  if (!currentUser || isEditingProfile) {
     return (
       <div className="flex h-screen bg-slate-50 items-center justify-center font-sans">
         <div className="bg-white p-8 rounded shadow-sm border border-slate-200 max-w-md w-full">
-          <h2 className="font-bold text-xl tracking-tight text-slate-800 uppercase mb-6 text-center">Complete Profile</h2>
+          <h2 className="font-bold text-xl tracking-tight text-slate-800 uppercase mb-6 text-center">
+            {isEditingProfile ? 'Edit Profil' : 'Lengkapi Profil'}
+          </h2>
           <div className="space-y-4">
             <div>
-              <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Full Name</label>
+              <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Nama Lengkap</label>
               <input 
                 type="text" 
                 value={nameInput}
                 onChange={e => setNameInput(e.target.value)}
                 className="w-full text-sm font-bold border border-slate-200 rounded px-3 py-2 bg-slate-50 text-slate-800 focus:outline-none focus:border-indigo-500"
-                placeholder="Enter your name"
+                placeholder="Masukkan nama Anda"
               />
             </div>
             <div>
-              <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Role</label>
+              <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Peran / Jabatan</label>
               <select 
                 value={roleInput}
                 onChange={e => setRoleInput(e.target.value)}
@@ -101,7 +114,7 @@ export default function App() {
             </div>
             {roleInput !== 'Director' && (
               <div>
-                <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Department</label>
+                <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Departemen</label>
                 <select 
                   value={deptInput}
                   onChange={e => setDeptInput(e.target.value)}
@@ -121,14 +134,14 @@ export default function App() {
               disabled={isSaving}
               className="w-full bg-indigo-600 text-white font-bold uppercase tracking-wider text-xs py-3 rounded mt-4 hover:bg-indigo-700 transition-colors disabled:opacity-50"
             >
-              {isSaving ? 'Menyimpan...' : 'Save Profile'}
+              {isSaving ? 'Menyimpan...' : 'Simpan Profil'}
             </button>
             <button 
-              onClick={logout}
+              onClick={() => isEditingProfile ? setIsEditingProfile(false) : logout()}
               disabled={isSaving}
               className="w-full bg-white text-slate-500 border border-slate-200 font-bold uppercase tracking-wider text-xs py-3 rounded mt-2 hover:bg-slate-50 hover:text-slate-700 transition-colors disabled:opacity-50"
             >
-              Cancel / Back to Login
+              Cancell / Kembali
             </button>
           </div>
         </div>
@@ -247,6 +260,13 @@ export default function App() {
                 {currentUser.name.charAt(0).toUpperCase()}
               </div>
               <div className="absolute right-0 top-12 mt-2 w-48 bg-white border border-slate-200 rounded shadow-sm opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-50 p-2">
+                <button 
+                  onClick={handleOpenProfileEdit}
+                  className="w-full text-left px-3 py-2 text-xs font-bold uppercase tracking-widest text-slate-500 hover:text-indigo-600 hover:bg-slate-50 rounded flex items-center gap-2 mb-1"
+                >
+                  <User size={14} /> Edit Profil
+                </button>
+                <div className="h-px bg-slate-100 w-full my-1"></div>
                 <button 
                   onClick={logout}
                   className="w-full text-left px-3 py-2 text-xs font-bold uppercase tracking-widest text-slate-500 hover:text-rose-600 hover:bg-slate-50 rounded flex items-center gap-2"
