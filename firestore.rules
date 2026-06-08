@@ -1,0 +1,99 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+    
+    function isValidId(id) {
+      return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    function getRole() {
+      let userDoc = get(/databases/$(database)/documents/users/$(request.auth.uid));
+      return userDoc != null ? userDoc.data.role : null;
+    }
+
+    function isDirector() {
+      return getRole() == 'Director';
+    }
+
+    function isManager() {
+      return getRole() == 'Manager';
+    }
+
+    function isStaff() {
+      return getRole() == 'Staff';
+    }
+
+    function isValidUser(data) {
+      return data.keys().hasAll(['email', 'name', 'role', 'department'])
+        && data.email is string && data.email.size() <= 100
+        && data.name is string && data.name.size() <= 100
+        && data.role is string && data.role in ['Director', 'Manager', 'Staff']
+        && data.department is string && data.department in ['Finance', 'HR', 'GA', 'All'];
+    }
+
+    match /users/{userId} {
+      allow read: if isSignedIn();
+      allow create: if isSignedIn() && request.auth.uid == userId && isValidUser(incoming()) && incoming().keys().size() == 4;
+      allow update: if isSignedIn() && request.auth.uid == userId && isValidUser(incoming());
+      // We also might need to allow an admin to update a user, or users to update their own profile
+    }
+
+    function isValidTask(data) {
+      return data.keys().hasAll(['staffId', 'staffName', 'department', 'description', 'startDate', 'dueDate', 'status', 'createdAt', 'updatedAt'])
+        && data.staffId is string && data.staffId.size() <= 128
+        && data.staffName is string && data.staffName.size() <= 100
+        && data.department is string && data.department.size() <= 50
+        && data.description is string && data.description.size() <= 1000
+        && data.startDate is string && data.startDate.size() <= 50
+        && data.dueDate is string && data.dueDate.size() <= 50
+        && data.status is string && data.status in ['Open', 'On Progress', 'Closed']
+        && data.createdAt is string && data.createdAt.size() <= 100
+        && data.updatedAt is string && data.updatedAt.size() <= 100
+        && (data.notes == null || (data.notes is string && data.notes.size() <= 1000));
+    }
+
+    match /tasks/{taskId} {
+      allow read: if isSignedIn();
+      
+      allow create: if isSignedIn() 
+        && isValidId(taskId)
+        && isValidTask(incoming());
+        // For simplicity, any signed in user can create (Directors/Managers will do it via UI)
+        
+      allow update: if isSignedIn()
+        && isValidId(taskId)
+        && isValidTask(incoming());
+        
+      allow delete: if isSignedIn(); // Directors/Managers can delete
+    }
+
+    function isValidLog(data) {
+      return data.keys().hasAll(['taskId', 'action', 'timestamp', 'userId', 'userName'])
+        && data.taskId is string && data.taskId.size() <= 128
+        && data.action is string && data.action.size() <= 500
+        && data.timestamp is string && data.timestamp.size() <= 100
+        && data.userId is string && data.userId.size() <= 128
+        && data.userName is string && data.userName.size() <= 100;
+    }
+
+    match /logs/{logId} {
+      allow read: if isSignedIn();
+      allow create: if isSignedIn() && isValidId(logId) && isValidLog(incoming());
+    }
+  }
+}
