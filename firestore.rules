@@ -40,22 +40,17 @@ service cloud.firestore {
 
     function isValidUser(data) {
       return data.keys().hasAll(['email', 'name', 'role', 'department'])
-        && data.email is string && data.email.size() <= 100
-        && data.name is string && data.name.size() <= 100
-        && data.role is string && data.role in ['Director', 'Manager', 'Staff']
-        && data.department is string && data.department in ['Finance', 'HR', 'GA', 'All'];
+        && data.role in ['Director', 'Manager', 'Staff']
+        && data.department in ['Finance', 'HR', 'GA', 'All'];
     }
 
     match /users/{userId} {
       allow read: if isSignedIn();
-      allow create: if isSignedIn() && request.auth.uid == userId && isValidUser(incoming()) && incoming().keys().size() == 4;
-      allow update: if isSignedIn() && request.auth.uid == userId && isValidUser(incoming());
-      // We also might need to allow an admin to update a user, or users to update their own profile
+      allow write: if isSignedIn() && request.auth.uid == userId && isValidUser(incoming());
     }
 
     function isValidTask(data) {
-      return data.keys().hasAll(['staffId', 'staffName', 'department', 'description', 'startDate', 'dueDate', 'status', 'createdAt', 'updatedAt'])
-        && data.staffId is string && data.staffId.size() <= 128
+      return data.keys().hasAll(['staffName', 'department', 'description', 'startDate', 'dueDate', 'status', 'createdAt', 'updatedAt'])
         && data.staffName is string && data.staffName.size() <= 100
         && data.department is string && data.department.size() <= 50
         && data.description is string && data.description.size() <= 1000
@@ -64,7 +59,7 @@ service cloud.firestore {
         && data.status is string && data.status in ['Open', 'On Progress', 'Closed']
         && data.createdAt is string && data.createdAt.size() <= 100
         && data.updatedAt is string && data.updatedAt.size() <= 100
-        && (data.notes == null || (data.notes is string && data.notes.size() <= 1000));
+        && (!data.keys().hasAny(['notes']) || data.notes == null || (data.notes is string && data.notes.size() <= 1000));
     }
 
     match /tasks/{taskId} {

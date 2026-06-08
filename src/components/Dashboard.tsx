@@ -95,7 +95,7 @@ export default function Dashboard({ tasks, filterDept }: DashboardProps) {
         {/* Bar Chart */}
         <div className="bg-white p-5 border border-slate-200 shadow-sm col-span-1 lg:col-span-2 flex flex-col">
           <h3 className="text-xs font-bold text-slate-700 uppercase tracking-widest mb-4 border-l-4 border-indigo-600 pl-3">
-            {filterDept === 'All' ? 'Performance Per Departemen' : 'Kinerja Staf'}
+            {filterDept === 'All' ? 'Distribusi Tugas per Departemen & Status' : 'Kinerja Staf (Distribusi Status)'}
           </h3>
           <div className="h-64 flex-1 mt-4">
             <ResponsiveContainer width="100%" height="100%">

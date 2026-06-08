@@ -16,6 +16,31 @@ export default function App() {
   const [nameInput, setNameInput] = useState('');
   const [roleInput, setRoleInput] = useState('Staff');
   const [deptInput, setDeptInput] = useState('Finance');
+  const [isSaving, setIsSaving] = useState(false);
+  const [saveError, setSaveError] = useState('');
+
+  React.useEffect(() => {
+    if (firebaseUser?.displayName && !nameInput) {
+      setNameInput(firebaseUser.displayName);
+    }
+  }, [firebaseUser, nameInput]);
+
+  const handleSaveProfile = async () => {
+    if (!nameInput.trim()) {
+      setSaveError('Nama harus diisi/Name is required');
+      return;
+    }
+    setSaveError('');
+    setIsSaving(true);
+    try {
+      await registerUser(nameInput, roleInput, roleInput === 'Director' ? 'All' : deptInput);
+    } catch (e: any) {
+      console.error(e);
+      setSaveError('Gagal menyimpan profil. Coba lagi.');
+    } finally {
+      setIsSaving(false);
+    }
+  };
 
   if (!firebaseUser) {
     return (
@@ -79,11 +104,22 @@ export default function App() {
                 </select>
               </div>
             )}
+            {saveError && (
+              <div className="text-rose-500 font-bold text-xs mt-2 text-center">{saveError}</div>
+            )}
             <button 
-              onClick={() => registerUser(nameInput, roleInput, roleInput === 'Director' ? 'All' : deptInput)}
-              className="w-full bg-indigo-600 text-white font-bold uppercase tracking-wider text-xs py-3 rounded mt-4 hover:bg-indigo-700 transition-colors"
+              onClick={handleSaveProfile}
+              disabled={isSaving}
+              className="w-full bg-indigo-600 text-white font-bold uppercase tracking-wider text-xs py-3 rounded mt-4 hover:bg-indigo-700 transition-colors disabled:opacity-50"
             >
-              Save Profile
+              {isSaving ? 'Menyimpan...' : 'Save Profile'}
+            </button>
+            <button 
+              onClick={logout}
+              disabled={isSaving}
+              className="w-full bg-white text-slate-500 border border-slate-200 font-bold uppercase tracking-wider text-xs py-3 rounded mt-2 hover:bg-slate-50 hover:text-slate-700 transition-colors disabled:opacity-50"
+            >
+              Cancel / Back to Login
             </button>
           </div>
         </div>
