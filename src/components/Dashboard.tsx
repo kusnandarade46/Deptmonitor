@@ -57,10 +57,35 @@ export default function Dashboard({ tasks, filterDept }: DashboardProps) {
       
       {/* KPI Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-        <StatCard title="Total Tugas Aktif" value={filteredTasks.length} />
-        <StatCard title="Status Open" value={totalOpen} color="text-slate-500" />
-        <StatCard title="Status On Progress" value={totalOnProgress} color="text-indigo-600" />
-        <StatCard title="Overdue / Terlambat" value={totalOverdue} color="text-rose-500" badge="Kritis" />
+        <StatCard 
+          title="Total Tugas Aktif" 
+          value={filteredTasks.length} 
+          bgClass="bg-gradient-to-br from-slate-700 to-slate-900 border-slate-800" 
+          textClass="text-white" 
+          titleClass="text-slate-200" 
+        />
+        <StatCard 
+          title="Status Open" 
+          value={totalOpen} 
+          bgClass="bg-gradient-to-br from-sky-500 to-blue-600 border-blue-600" 
+          textClass="text-white" 
+          titleClass="text-blue-100" 
+        />
+        <StatCard 
+          title="Status On Progress" 
+          value={totalOnProgress} 
+          bgClass="bg-gradient-to-br from-indigo-500 to-violet-600 border-indigo-600" 
+          textClass="text-white" 
+          titleClass="text-indigo-100" 
+        />
+        <StatCard 
+          title="Overdue / Terlambat" 
+          value={totalOverdue} 
+          bgClass="bg-gradient-to-br from-rose-500 to-red-600 border-rose-600" 
+          textClass="text-white" 
+          titleClass="text-rose-100" 
+          badge="Kritis" 
+        />
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -121,14 +146,28 @@ export default function Dashboard({ tasks, filterDept }: DashboardProps) {
   );
 }
 
-function StatCard({ title, value, color = "text-slate-800", badge }: { title: string, value: number, color?: string, badge?: string }) {
+function StatCard({ 
+  title, 
+  value, 
+  bgClass = "bg-white border-slate-200", 
+  textClass = "text-slate-800", 
+  titleClass = "text-slate-400", 
+  badge 
+}: { 
+  title: string, 
+  value: number, 
+  bgClass?: string, 
+  textClass?: string, 
+  titleClass?: string, 
+  badge?: string 
+}) {
   return (
-    <div className={`bg-white border border-slate-200 p-5 flex flex-col justify-between h-32 shadow-sm`}>
-      <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{title}</p>
+    <div className={`${bgClass} border p-5 flex flex-col justify-between h-32 rounded shadow-sm`}>
+      <p className={`text-[10px] font-bold uppercase tracking-widest ${titleClass}`}>{title}</p>
       <div className="flex items-end justify-between">
-        <span className={`text-4xl font-light ${color}`}>{value}</span>
+        <span className={`text-4xl font-light ${textClass}`}>{value}</span>
         {badge && value > 0 && (
-          <span className="px-2 py-0.5 bg-rose-50 text-rose-600 text-[10px] font-bold rounded-sm mb-2 uppercase tracking-widest shadow-sm border border-rose-100">
+          <span className="px-2 py-0.5 bg-white/20 text-white backdrop-blur-sm text-[10px] font-bold rounded-sm mb-2 uppercase tracking-widest shadow-sm">
             {badge}
           </span>
         )}
