@@ -7,6 +7,7 @@ import { signInWithPopup, GoogleAuthProvider, signOut, onAuthStateChanged, User 
 interface AppStore {
   currentUser: User | null;
   firebaseUser: FirebaseUser | null;
+  isUserLoading: boolean;
   tasks: Task[];
   logs: ActivityLogEntry[];
   addTask: (taskData: Omit<Task, 'id' | 'createdAt' | 'updatedAt'>) => Promise<void>;
@@ -22,6 +23,7 @@ const AppContext = createContext<AppStore | undefined>(undefined);
 export function AppProvider({ children }: { children: ReactNode }) {
   const [firebaseUser, setFirebaseUser] = useState<FirebaseUser | null>(null);
   const [currentUser, setCurrentUser] = useState<User | null>(null);
+  const [isUserLoading, setIsUserLoading] = useState(true);
   const [tasks, setTasks] = useState<Task[]>([]);
   const [logs, setLogs] = useState<ActivityLogEntry[]>([]);
   const [authInitialized, setAuthInitialized] = useState(false);
@@ -37,16 +39,20 @@ export function AppProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (!firebaseUser) {
       setCurrentUser(null);
+      setIsUserLoading(false);
       return;
     }
+    setIsUserLoading(true);
     const unsub = onSnapshot(doc(db, 'users', firebaseUser.uid), (docSnap) => {
       if (docSnap.exists()) {
         setCurrentUser({ id: docSnap.id, ...docSnap.data() } as User);
       } else {
         setCurrentUser(null);
       }
+      setIsUserLoading(false);
     }, (error) => {
       handleFirestoreError(error, OperationType.GET, `users/${firebaseUser.uid}`);
+      setIsUserLoading(false);
     });
     return unsub;
   }, [firebaseUser]);
@@ -155,7 +161,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }
 
   return (
-    <AppContext.Provider value={{ currentUser, firebaseUser, tasks, logs, addTask, updateTask, deleteTask, login, logout, registerUser }}>
+    <AppContext.Provider value={{ currentUser, firebaseUser, isUserLoading, tasks, logs, addTask, updateTask, deleteTask, login, logout, registerUser }}>
       {children}
     </AppContext.Provider>
   );

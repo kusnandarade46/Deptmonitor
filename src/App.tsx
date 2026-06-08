@@ -9,8 +9,9 @@ import { useAppStore } from './store';
 import { Task } from './types';
 
 export default function App() {
-  const { firebaseUser, currentUser, tasks, logs, addTask, updateTask, deleteTask, login, logout, registerUser } = useAppStore();
+  const { firebaseUser, currentUser, isUserLoading, tasks, logs, addTask, updateTask, deleteTask, login, logout, registerUser } = useAppStore();
   const [activeTab, setActiveTab] = useState<'dashboard' | 'kanban' | 'list' | 'audit'>('dashboard');
+  const [viewDepartment, setViewDepartment] = useState<string>('All');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingTask, setEditingTask] = useState<Task | undefined>(undefined);
   const [nameInput, setNameInput] = useState('');
@@ -58,6 +59,14 @@ export default function App() {
             Sign in with Google
           </button>
         </div>
+      </div>
+    );
+  }
+
+  if (isUserLoading) {
+    return (
+      <div className="h-screen w-screen flex items-center justify-center bg-slate-50 text-slate-500 font-mono tracking-widest uppercase py-8">
+        Melakukan sinkronisasi data profil...
       </div>
     );
   }
@@ -127,11 +136,10 @@ export default function App() {
     );
   }
 
-  // Filter tasks based on role/department
+  // Filter tasks based on selected viewing department
   const filteredTasks = tasks.filter(t => {
-    if (currentUser.department === 'All') return true;
-    if (currentUser.role === 'Staff') return t.staffName === currentUser.name;
-    return t.department === currentUser.department;
+    if (viewDepartment === 'All') return true;
+    return t.department === viewDepartment;
   });
 
   const handleOpenNewTask = () => {
@@ -256,9 +264,18 @@ export default function App() {
           <div className="flex justify-between items-end mb-6">
              <div>
                 <h3 className="text-slate-400 text-[10px] font-bold uppercase tracking-widest">Filter Departemen</h3>
-                <p className="font-bold text-slate-800 uppercase tracking-widest mt-1">
-                  {currentUser.department === 'All' ? 'Semua Dept' : currentUser.department}
-                </p>
+                <div className="mt-1 flex items-center gap-2">
+                  <select 
+                    value={viewDepartment}
+                    onChange={(e) => setViewDepartment(e.target.value)}
+                    className="bg-white border border-slate-200 text-slate-800 text-xs font-bold uppercase tracking-widest rounded px-3 py-1.5 focus:outline-none focus:border-indigo-500 cursor-pointer"
+                  >
+                    <option value="All">Semua Dept</option>
+                    <option value="Finance">Finance</option>
+                    <option value="HR">HR</option>
+                    <option value="GA">GA</option>
+                  </select>
+                </div>
              </div>
              
              {currentUser.role !== 'Director' && (
@@ -272,7 +289,7 @@ export default function App() {
              )}
           </div>
 
-          {activeTab === 'dashboard' && <Dashboard tasks={filteredTasks} filterDept={currentUser.department} />}
+          {activeTab === 'dashboard' && <Dashboard tasks={filteredTasks} filterDept={viewDepartment as any} />}
           {activeTab === 'kanban' && <KanbanBoard tasks={filteredTasks} onEditTask={handleEditTask} />}
           {activeTab === 'list' && <TableView tasks={filteredTasks} onEditTask={handleEditTask} />}
           {activeTab === 'audit' && <ActivityLogView logs={logs} />}
