@@ -9,7 +9,7 @@ import { useAppStore } from './store';
 import { Task } from './types';
 
 export default function App() {
-  const { firebaseUser, currentUser, isUserLoading, tasks, logs, addTask, updateTask, deleteTask, login, logout, registerUser } = useAppStore();
+  const { firebaseUser, currentUser, isUserLoading, tasks, logs, addTask, updateTask, deleteTask, loginGoogle, loginEmail, registerEmail, logout, registerUser } = useAppStore();
   const [activeTab, setActiveTab] = useState<'dashboard' | 'kanban' | 'list' | 'audit'>('dashboard');
   const [viewDepartment, setViewDepartment] = useState<string>('All');
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -21,6 +21,26 @@ export default function App() {
   const [deptInput, setDeptInput] = useState('Finance');
   const [isSaving, setIsSaving] = useState(false);
   const [saveError, setSaveError] = useState('');
+
+  // Login form state
+  const [loginEmailInput, setLoginEmailInput] = useState('');
+  const [loginPasswordInput, setLoginPasswordInput] = useState('');
+  const [isRegistering, setIsRegistering] = useState(false);
+  const [authError, setAuthError] = useState('');
+
+  const handleEmailAuth = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setAuthError('');
+    try {
+      if (isRegistering) {
+        await registerEmail(loginEmailInput, loginPasswordInput);
+      } else {
+        await loginEmail(loginEmailInput, loginPasswordInput);
+      }
+    } catch (err: any) {
+      setAuthError(err.message || 'Authentication failed');
+    }
+  };
 
   React.useEffect(() => {
     if (firebaseUser?.displayName && !nameInput) {
@@ -58,17 +78,51 @@ export default function App() {
   if (!firebaseUser) {
     return (
       <div className="flex h-screen bg-slate-50 items-center justify-center font-sans">
-        <div className="bg-white p-12 rounded shadow-sm border border-slate-200 text-center max-w-sm w-full">
+        <div className="bg-white p-10 rounded shadow-sm border border-slate-200 max-w-sm w-full">
           <div className="w-12 h-12 bg-indigo-600 rounded flex items-center justify-center mx-auto mb-6">
             <div className="w-6 h-6 border-2 border-white rotate-45"></div>
           </div>
-          <h1 className="font-bold text-2xl tracking-tight text-slate-800 uppercase mb-2">DeptMonitor</h1>
-          <p className="text-sm text-slate-500 mb-8">Login to access your tasks and dashboard.</p>
+          <h1 className="font-bold text-2xl tracking-tight text-slate-800 text-center uppercase mb-2">DeptMonitor</h1>
+          <p className="text-xs text-slate-500 text-center uppercase tracking-widest mb-6">
+            {isRegistering ? 'Sign up to continue' : 'Login to dashboard'}
+          </p>
+          
+          <form onSubmit={handleEmailAuth} className="space-y-4 mb-6">
+            <div>
+              <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Email</label>
+              <input 
+                type="email" 
+                value={loginEmailInput}
+                onChange={e => setLoginEmailInput(e.target.value)}
+                className="w-full text-sm border border-slate-200 rounded px-3 py-2 bg-slate-50 text-slate-800 focus:outline-none focus:border-indigo-500"
+                required
+              />
+            </div>
+            <div>
+              <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Password</label>
+              <input 
+                type="password" 
+                value={loginPasswordInput}
+                onChange={e => setLoginPasswordInput(e.target.value)}
+                className="w-full text-sm border border-slate-200 rounded px-3 py-2 bg-slate-50 text-slate-800 focus:outline-none focus:border-indigo-500"
+                required
+              />
+            </div>
+            {authError && <p className="text-rose-500 text-[10px] uppercase font-bold tracking-widest">{authError}</p>}
+            <button 
+              type="submit"
+              className="w-full bg-slate-900 text-white font-bold uppercase tracking-wider text-xs py-2.5 rounded shadow-sm hover:bg-slate-800 transition-colors"
+            >
+              {isRegistering ? 'Register' : 'Login'}
+            </button>
+          </form>
+
           <button 
-            onClick={login}
-            className="w-full bg-slate-900 text-white font-bold uppercase tracking-wider text-xs py-3 rounded shadow-sm hover:bg-slate-800 transition-colors"
+            type="button"
+            onClick={() => { setIsRegistering(!isRegistering); setAuthError(''); }}
+            className="w-full mt-6 text-center text-[10px] text-indigo-600 font-bold uppercase tracking-widest hover:text-indigo-800"
           >
-            Sign in with Google
+            {isRegistering ? 'Already have an account? Login' : "Don't have an account? Register"}
           </button>
         </div>
       </div>

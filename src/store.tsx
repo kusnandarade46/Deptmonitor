@@ -2,7 +2,7 @@ import React, { createContext, useContext, useState, useEffect, useCallback, Rea
 import { Task, ActivityLogEntry, User, Department, TaskStatus } from './types';
 import { db, auth, OperationType, handleFirestoreError } from './firebase';
 import { collection, doc, onSnapshot, setDoc, updateDoc, deleteDoc, query, orderBy, serverTimestamp, getDoc } from 'firebase/firestore';
-import { signInWithPopup, GoogleAuthProvider, signOut, onAuthStateChanged, User as FirebaseUser } from 'firebase/auth';
+import { signInWithPopup, GoogleAuthProvider, signOut, onAuthStateChanged, User as FirebaseUser, signInWithEmailAndPassword, createUserWithEmailAndPassword } from 'firebase/auth';
 
 interface AppStore {
   currentUser: User | null;
@@ -13,7 +13,9 @@ interface AppStore {
   addTask: (taskData: Omit<Task, 'id' | 'createdAt' | 'updatedAt'>) => Promise<void>;
   updateTask: (id: string, updates: Partial<Task>) => Promise<void>;
   deleteTask: (id: string) => Promise<void>;
-  login: () => Promise<void>;
+  loginGoogle: () => Promise<void>;
+  loginEmail: (email: string, pass: string) => Promise<void>;
+  registerEmail: (email: string, pass: string) => Promise<void>;
   logout: () => Promise<void>;
   registerUser: (name: string, role: string, dept: string) => Promise<void>;
 }
@@ -136,9 +138,17 @@ export function AppProvider({ children }: { children: ReactNode }) {
     await addLog(id, `Deleted Task: ${taskDesc}`);
   }, [currentUser, addLog]);
 
-  const login = useCallback(async () => {
+  const loginGoogle = useCallback(async () => {
     const provider = new GoogleAuthProvider();
     await signInWithPopup(auth, provider);
+  }, []);
+
+  const loginEmail = useCallback(async (email: string, pass: string) => {
+    await signInWithEmailAndPassword(auth, email, pass);
+  }, []);
+
+  const registerEmail = useCallback(async (email: string, pass: string) => {
+    await createUserWithEmailAndPassword(auth, email, pass);
   }, []);
 
   const logout = useCallback(async () => {
@@ -161,7 +171,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }
 
   return (
-    <AppContext.Provider value={{ currentUser, firebaseUser, isUserLoading, tasks, logs, addTask, updateTask, deleteTask, login, logout, registerUser }}>
+    <AppContext.Provider value={{ currentUser, firebaseUser, isUserLoading, tasks, logs, addTask, updateTask, deleteTask, loginGoogle, loginEmail, registerEmail, logout, registerUser }}>
       {children}
     </AppContext.Provider>
   );
