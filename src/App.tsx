@@ -9,71 +9,135 @@ import { useAppStore } from './store';
 import { Task } from './types';
 
 export default function App() {
-  const { firebaseUser, currentUser, isUserLoading, tasks, logs, addTask, updateTask, deleteTask, loginGoogle, loginEmail, registerEmail, logout, registerUser } = useAppStore();
+  const { currentUser, isUserLoading, tasks, logs, addTask, updateTask, deleteTask, loginWithPin, registerWithPin, logout } = useAppStore();
   const [activeTab, setActiveTab] = useState<'dashboard' | 'kanban' | 'list' | 'audit'>('dashboard');
   const [viewDepartment, setViewDepartment] = useState<string>('All');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingTask, setEditingTask] = useState<Task | undefined>(undefined);
   const [isViewMode, setIsViewMode] = useState(false);
-  const [isEditingProfile, setIsEditingProfile] = useState(false);
-  const [nameInput, setNameInput] = useState('');
-  const [roleInput, setRoleInput] = useState('Staff');
-  const [deptInput, setDeptInput] = useState('Finance');
-  const [isSaving, setIsSaving] = useState(false);
-  const [saveError, setSaveError] = useState('');
 
   // Login form state
-  const [loginEmailInput, setLoginEmailInput] = useState('');
-  const [loginPasswordInput, setLoginPasswordInput] = useState('');
+  const [loginNameInput, setLoginNameInput] = useState('');
+  const [loginPinInput, setLoginPinInput] = useState('');
+  const [registerRole, setRegisterRole] = useState('Staff');
+  const [registerDept, setRegisterDept] = useState('Finance');
   const [isRegistering, setIsRegistering] = useState(false);
   const [authError, setAuthError] = useState('');
+  const [isAuthLoading, setIsAuthLoading] = useState(false);
 
-  const handleEmailAuth = async (e: React.FormEvent) => {
+  const handlePinAuth = async (e: React.FormEvent) => {
     e.preventDefault();
     setAuthError('');
+    setIsAuthLoading(true);
     try {
       if (isRegistering) {
-        await registerEmail(loginEmailInput, loginPasswordInput);
+        await registerWithPin(loginNameInput, loginPinInput, registerRole, registerRole === 'Director' ? 'All' : registerDept);
       } else {
-        await loginEmail(loginEmailInput, loginPasswordInput);
+        await loginWithPin(loginNameInput, loginPinInput);
       }
     } catch (err: any) {
       setAuthError(err.message || 'Authentication failed');
-    }
-  };
-
-  React.useEffect(() => {
-    if (firebaseUser?.displayName && !nameInput) {
-      setNameInput(firebaseUser.displayName);
-    }
-  }, [firebaseUser, nameInput]);
-
-  const handleSaveProfile = async () => {
-    if (!nameInput.trim()) {
-      setSaveError('Nama harus diisi/Name is required');
-      return;
-    }
-    setSaveError('');
-    setIsSaving(true);
-    try {
-      await registerUser(nameInput, roleInput, roleInput === 'Director' ? 'All' : deptInput);
-      setIsEditingProfile(false);
-    } catch (e: any) {
-      console.error(e);
-      setSaveError('Gagal menyimpan profil. Coba lagi.');
     } finally {
-      setIsSaving(false);
+      setIsAuthLoading(false);
     }
   };
 
-  const handleOpenProfileEdit = () => {
-    if (currentUser) {
-      setNameInput(currentUser.name);
-      setRoleInput(currentUser.role);
-      setDeptInput(currentUser.department);
-      setIsEditingProfile(true);
-    }
-  };
+  if (isUserLoading) {
+    return (
+      <div className="h-screen w-screen flex items-center justify-center bg-slate-50 text-slate-500 font-mono tracking-widest uppercase py-8">
+        Mengecek sesi...
+      </div>
+    );
+  }
+
+  if (!currentUser) {
+    return (
+      <div className="flex h-screen bg-slate-50 items-center justify-center font-sans">
+        <div className="bg-white p-10 rounded shadow-sm border border-slate-200 max-w-md w-full">
+          <div className="w-12 h-12 bg-indigo-600 rounded flex items-center justify-center mx-auto mb-6">
+            <div className="w-6 h-6 border-2 border-white rotate-45"></div>
+          </div>
+          <h1 className="font-bold text-2xl tracking-tight text-slate-800 text-center uppercase mb-2">DeptMonitor</h1>
+          <p className="text-xs text-slate-500 text-center uppercase tracking-widest mb-6">
+            {isRegistering ? 'Buat Profil Baru' : 'Login dengan Nama & PIN'}
+          </p>
+          
+          <form onSubmit={handlePinAuth} className="space-y-4 mb-6">
+            <div>
+              <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Nama/Nama Panggilan</label>
+              <input 
+                type="text" 
+                value={loginNameInput}
+                onChange={e => setLoginNameInput(e.target.value)}
+                className="w-full text-sm border border-slate-200 rounded px-3 py-2 bg-slate-50 text-slate-800 focus:outline-none focus:border-indigo-500"
+                placeholder="Contoh: Budi"
+                required
+              />
+            </div>
+            <div>
+              <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">PIN</label>
+              <input 
+                type="password" 
+                value={loginPinInput}
+                onChange={e => setLoginPinInput(e.target.value)}
+                className="w-full text-sm border border-slate-200 rounded px-3 py-2 bg-slate-50 text-slate-800 focus:outline-none focus:border-indigo-500"
+                placeholder={isRegistering ? "Buat PIN (contoh: 123456)" : "Masukkan PIN"}
+                required
+              />
+            </div>
+
+            {isRegistering && (
+              <>
+                <div>
+                  <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Peran / Jabatan</label>
+                  <select 
+                    value={registerRole}
+                    onChange={e => setRegisterRole(e.target.value)}
+                    className="w-full text-sm font-bold border border-slate-200 rounded px-3 py-2 bg-slate-50 text-slate-800 focus:outline-none focus:border-indigo-500 appearance-none"
+                  >
+                    <option value="Staff">Staff</option>
+                    <option value="Manager">Manager</option>
+                    <option value="Director">Director</option>
+                  </select>
+                </div>
+                {registerRole !== 'Director' && (
+                  <div>
+                    <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Departemen</label>
+                    <select 
+                      value={registerDept}
+                      onChange={e => setRegisterDept(e.target.value)}
+                      className="w-full text-sm font-bold border border-slate-200 rounded px-3 py-2 bg-slate-50 text-slate-800 focus:outline-none focus:border-indigo-500 appearance-none"
+                    >
+                      <option value="Finance">Finance</option>
+                      <option value="HR">HR</option>
+                      <option value="GA">GA</option>
+                    </select>
+                  </div>
+                )}
+              </>
+            )}
+
+            {authError && <p className="text-rose-500 text-[10px] uppercase font-bold tracking-widest text-center">{authError}</p>}
+            <button 
+              type="submit"
+              disabled={isAuthLoading}
+              className="w-full bg-slate-900 text-white font-bold uppercase tracking-wider text-xs py-2.5 rounded shadow-sm hover:bg-slate-800 transition-colors disabled:opacity-50"
+            >
+              {isAuthLoading ? 'Memproses...' : (isRegistering ? 'Daftar' : 'Login')}
+            </button>
+          </form>
+
+          <button 
+            type="button"
+            onClick={() => { setIsRegistering(!isRegistering); setAuthError(''); }}
+            className="w-full mt-6 text-center text-[10px] text-indigo-600 font-bold uppercase tracking-widest hover:text-indigo-800"
+          >
+            {isRegistering ? 'Sudah punya PIN? Login ke profil Anda' : "Belum punya profil? Buat profil baru (PIN)"}
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   // Filter tasks based on selected viewing department
   const filteredTasks = tasks.filter(t => {
@@ -220,13 +284,6 @@ export default function App() {
                 {currentUser.name.charAt(0).toUpperCase()}
               </div>
               <div className="absolute right-0 top-12 mt-2 w-48 bg-white border border-slate-200 rounded shadow-sm opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-50 p-2">
-                <button 
-                  onClick={handleOpenProfileEdit}
-                  className="w-full text-left px-3 py-2 text-xs font-bold uppercase tracking-widest text-slate-500 hover:text-indigo-600 hover:bg-slate-50 rounded flex items-center gap-2 mb-1"
-                >
-                  <User size={14} /> Edit Profil
-                </button>
-                <div className="h-px bg-slate-100 w-full my-1"></div>
                 <button 
                   onClick={logout}
                   className="w-full text-left px-3 py-2 text-xs font-bold uppercase tracking-widest text-slate-500 hover:text-rose-600 hover:bg-slate-50 rounded flex items-center gap-2"
