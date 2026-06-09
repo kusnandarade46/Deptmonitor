@@ -1,12 +1,11 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react';
 import { Task, ActivityLogEntry, User, Department, TaskStatus } from './types';
-import { db, auth, OperationType, handleFirestoreError } from './firebase';
-import { collection, doc, onSnapshot, setDoc, updateDoc, deleteDoc, query, orderBy, serverTimestamp, getDoc } from 'firebase/firestore';
-import { signInWithPopup, GoogleAuthProvider, signOut, onAuthStateChanged, User as FirebaseUser, signInWithEmailAndPassword, createUserWithEmailAndPassword } from 'firebase/auth';
+import { db, OperationType, handleFirestoreError } from './firebase';
+import { collection, doc, onSnapshot, setDoc, updateDoc, deleteDoc, query, orderBy, getDoc } from 'firebase/firestore';
 
 interface AppStore {
   currentUser: User | null;
-  firebaseUser: FirebaseUser | null;
+  firebaseUser: any;
   isUserLoading: boolean;
   tasks: Task[];
   logs: ActivityLogEntry[];
@@ -22,50 +21,19 @@ interface AppStore {
 
 const AppContext = createContext<AppStore | undefined>(undefined);
 
+const DUMMY_USER: User = {
+  id: 'admin_user',
+  name: 'Admin',
+  role: 'Director',
+  department: 'All',
+  email: 'admin@local.test'
+};
+
 export function AppProvider({ children }: { children: ReactNode }) {
-  const [firebaseUser, setFirebaseUser] = useState<FirebaseUser | null>(null);
-  const [currentUser, setCurrentUser] = useState<User | null>(null);
-  const [isUserLoading, setIsUserLoading] = useState(true);
   const [tasks, setTasks] = useState<Task[]>([]);
   const [logs, setLogs] = useState<ActivityLogEntry[]>([]);
-  const [authInitialized, setAuthInitialized] = useState(false);
 
   useEffect(() => {
-    const unsub = onAuthStateChanged(auth, (user) => {
-      setFirebaseUser(user);
-      setAuthInitialized(true);
-    });
-    return unsub;
-  }, []);
-
-  useEffect(() => {
-    if (!firebaseUser) {
-      setCurrentUser(null);
-      setIsUserLoading(false);
-      return;
-    }
-    setIsUserLoading(true);
-    const unsub = onSnapshot(doc(db, 'users', firebaseUser.uid), (docSnap) => {
-      if (docSnap.exists()) {
-        setCurrentUser({ id: docSnap.id, ...docSnap.data() } as User);
-      } else {
-        setCurrentUser(null);
-      }
-      setIsUserLoading(false);
-    }, (error) => {
-      handleFirestoreError(error, OperationType.GET, `users/${firebaseUser.uid}`);
-      setIsUserLoading(false);
-    });
-    return unsub;
-  }, [firebaseUser]);
-
-  useEffect(() => {
-    if (!currentUser) {
-      setTasks([]);
-      setLogs([]);
-      return;
-    }
-
     const tasksQuery = query(collection(db, 'tasks'), orderBy('createdAt', 'desc'));
     const unsubTasks = onSnapshot(tasksQuery, (snapshot) => {
       setTasks(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Task)));
@@ -84,22 +52,20 @@ export function AppProvider({ children }: { children: ReactNode }) {
       unsubTasks();
       unsubLogs();
     };
-  }, [currentUser]);
+  }, []);
 
   const addLog = useCallback(async (taskId: string, action: string) => {
-    if (!currentUser) return;
     const logRef = doc(collection(db, 'logs'));
     await setDoc(logRef, {
       taskId,
       action,
       timestamp: new Date().toISOString(),
-      userId: currentUser.id,
-      userName: currentUser.name
+      userId: DUMMY_USER.id,
+      userName: DUMMY_USER.name
     }).catch(e => handleFirestoreError(e, OperationType.CREATE, `logs/${logRef.id}`));
-  }, [currentUser]);
+  }, []);
 
   const addTask = useCallback(async (taskData: Omit<Task, 'id' | 'createdAt' | 'updatedAt'>) => {
-    if (!currentUser) return;
     const taskRef = doc(collection(db, 'tasks'));
     const newTask = {
       ...taskData,
@@ -108,10 +74,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
     };
     await setDoc(taskRef, newTask).catch(e => handleFirestoreError(e, OperationType.CREATE, `tasks/${taskRef.id}`));
     await addLog(taskRef.id, `Created Task: ${newTask.description}`);
-  }, [currentUser, addLog]);
+  }, [addLog]);
 
   const updateTask = useCallback(async (id: string, updates: Partial<Task>) => {
-    if (!currentUser) return;
     const taskRef = doc(db, 'tasks', id);
     const existingSnap = await getDoc(taskRef);
     if (!existingSnap.exists()) return;
@@ -125,10 +90,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
     } else {
       await addLog(id, `Updated task details`);
     }
-  }, [currentUser, addLog]);
+  }, [addLog]);
 
   const deleteTask = useCallback(async (id: string) => {
-    if (!currentUser) return;
     const taskRef = doc(db, 'tasks', id);
     const existingSnap = await getDoc(taskRef);
     if (!existingSnap.exists()) return;
@@ -136,42 +100,16 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
     await deleteDoc(taskRef).catch(e => handleFirestoreError(e, OperationType.DELETE, `tasks/${id}`));
     await addLog(id, `Deleted Task: ${taskDesc}`);
-  }, [currentUser, addLog]);
+  }, [addLog]);
 
-  const loginGoogle = useCallback(async () => {
-    const provider = new GoogleAuthProvider();
-    await signInWithPopup(auth, provider);
-  }, []);
-
-  const loginEmail = useCallback(async (email: string, pass: string) => {
-    await signInWithEmailAndPassword(auth, email, pass);
-  }, []);
-
-  const registerEmail = useCallback(async (email: string, pass: string) => {
-    await createUserWithEmailAndPassword(auth, email, pass);
-  }, []);
-
-  const logout = useCallback(async () => {
-    await signOut(auth);
-  }, []);
-
-  const registerUser = useCallback(async (name: string, role: string, department: string) => {
-    if (!firebaseUser) return;
-    const userRef = doc(db, 'users', firebaseUser.uid);
-    await setDoc(userRef, {
-      email: firebaseUser.email || '',
-      name,
-      role,
-      department
-    }).catch(e => handleFirestoreError(e, OperationType.CREATE, `users/${firebaseUser.uid}`));
-  }, [firebaseUser]);
-
-  if (!authInitialized) {
-    return <div className="h-screen w-screen flex items-center justify-center bg-slate-50 text-slate-500 font-mono tracking-widest uppercase py-8">Initializing...</div>;
-  }
+  const loginGoogle = useCallback(async () => {}, []);
+  const loginEmail = useCallback(async () => {}, []);
+  const registerEmail = useCallback(async () => {}, []);
+  const logout = useCallback(async () => {}, []);
+  const registerUser = useCallback(async () => {}, []);
 
   return (
-    <AppContext.Provider value={{ currentUser, firebaseUser, isUserLoading, tasks, logs, addTask, updateTask, deleteTask, loginGoogle, loginEmail, registerEmail, logout, registerUser }}>
+    <AppContext.Provider value={{ currentUser: DUMMY_USER, firebaseUser: {}, isUserLoading: false, tasks, logs, addTask, updateTask, deleteTask, loginGoogle, loginEmail, registerEmail, logout, registerUser }}>
       {children}
     </AppContext.Provider>
   );

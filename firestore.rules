@@ -45,8 +45,7 @@ service cloud.firestore {
     }
 
     match /users/{userId} {
-      allow read: if isSignedIn();
-      allow write: if isSignedIn() && request.auth.uid == userId && isValidUser(incoming());
+      allow read, write: if true;
     }
 
     function isValidTask(data) {
@@ -58,13 +57,11 @@ service cloud.firestore {
     }
 
     match /tasks/{taskId} {
-      allow read: if isSignedIn();
-      allow write: if isSignedIn();
+      allow read, write: if true;
     }
 
     match /logs/{logId} {
-      allow read: if isSignedIn();
-      allow write: if isSignedIn();
+      allow read, write: if true;
     }
   }
 }
