@@ -1,38 +1,71 @@
 import React, { useState } from 'react';
 import { Task } from '../types';
 import { format, isBefore, isAfter, startOfDay, isSameDay } from 'date-fns';
-import { Edit2, Filter } from 'lucide-react';
+import { Edit2, Filter, Trash2, Eye, Download } from 'lucide-react';
 import { cn } from '../lib/utils';
+
+import * as XLSX from 'xlsx';
 
 interface TableViewProps {
   tasks: Task[];
   onEditTask: (task: Task) => void;
+  onDeleteTask: (id: string) => void;
+  onViewTask: (task: Task) => void;
 }
 
-export default function TableView({ tasks, onEditTask }: TableViewProps) {
+export default function TableView({ tasks, onEditTask, onDeleteTask, onViewTask }: TableViewProps) {
   const [startDateFilter, setStartDateFilter] = useState('');
   const [endDateFilter, setEndDateFilter] = useState('');
+  const [statusFilter, setStatusFilter] = useState<string>('All');
 
   const filteredTasks = tasks.filter(task => {
-    if (!startDateFilter && !endDateFilter) return true;
-    
-    const taskDate = startOfDay(new Date(task.startDate));
-    const start = startDateFilter ? startOfDay(new Date(startDateFilter)) : null;
-    const end = endDateFilter ? startOfDay(new Date(endDateFilter)) : null;
+    let matchesDate = true;
+    let matchesStatus = true;
 
-    if (start && end) {
-      return (isAfter(taskDate, start) || isSameDay(taskDate, start)) && 
-             (isBefore(taskDate, end) || isSameDay(taskDate, end));
+    // Date filter logic
+    if (startDateFilter || endDateFilter) {
+      const taskDate = startOfDay(new Date(task.startDate));
+      const start = startDateFilter ? startOfDay(new Date(startDateFilter)) : null;
+      const end = endDateFilter ? startOfDay(new Date(endDateFilter)) : null;
+
+      if (start && end) {
+        matchesDate = (isAfter(taskDate, start) || isSameDay(taskDate, start)) && 
+               (isBefore(taskDate, end) || isSameDay(taskDate, end));
+      } else if (start) {
+        matchesDate = isAfter(taskDate, start) || isSameDay(taskDate, start);
+      } else if (end) {
+        matchesDate = isBefore(taskDate, end) || isSameDay(taskDate, end);
+      }
     }
-    if (start) {
-      return isAfter(taskDate, start) || isSameDay(taskDate, start);
+
+    // Status filter logic
+    if (statusFilter !== 'All') {
+      const isOverdue = task.status !== 'Closed' && isBefore(startOfDay(new Date(task.dueDate)), startOfDay(new Date()));
+      if (statusFilter === 'Overdue') {
+        matchesStatus = isOverdue;
+      } else {
+        matchesStatus = task.status === statusFilter && !isOverdue; // Option to separate overdue from Open/OnProgress, or just filter by raw status. Let's just filter by raw status unless it's explicitly querying overdue
+      }
     }
-    if (end) {
-      return isBefore(taskDate, end) || isSameDay(taskDate, end);
-    }
-    
-    return true;
+
+    return matchesDate && matchesStatus;
   });
+
+  const handleExportExcel = () => {
+    const data = filteredTasks.map(task => ({
+      'Deskripsi Pekerjaan': task.description,
+      'Staf/Dept': `${task.staffName} (${task.department})`,
+      'Tgl Mulai': format(new Date(task.startDate), 'dd MMM yyyy'),
+      'Due Date': format(new Date(task.dueDate), 'dd MMM yyyy'),
+      'Status': task.status
+    }));
+
+    const worksheet = XLSX.utils.json_to_sheet(data);
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, "Daftar Tugas");
+
+    XLSX.writeFile(workbook, `Daftar_Tugas_Export_${format(new Date(), 'yyyyMMdd_HHmm')}.xlsx`);
+  };
 
   return (
     <div className="flex flex-col gap-4 h-full">
@@ -55,17 +88,37 @@ export default function TableView({ tasks, onEditTask }: TableViewProps) {
             onChange={(e) => setEndDateFilter(e.target.value)}
             className="text-[10px] px-3 py-1.5 border border-slate-200 rounded focus:outline-none focus:ring-1 focus:ring-indigo-500 font-mono text-slate-600"
           />
-          {(startDateFilter || endDateFilter) && (
+          <div className="h-4 w-px bg-slate-300 mx-1"></div>
+          <select
+            value={statusFilter}
+            onChange={(e) => setStatusFilter(e.target.value)}
+            className="text-[10px] px-3 py-1.5 border border-slate-200 rounded focus:outline-none focus:ring-1 focus:ring-indigo-500 font-bold text-slate-600 uppercase"
+          >
+            <option value="All">Semua Status</option>
+            <option value="Open">Open</option>
+            <option value="On Progress">On Progress</option>
+            <option value="Closed">Closed</option>
+            <option value="Overdue">Overdue</option>
+          </select>
+          {(startDateFilter || endDateFilter || statusFilter !== 'All') && (
             <button 
-              onClick={() => { setStartDateFilter(''); setEndDateFilter(''); }}
+              onClick={() => { setStartDateFilter(''); setEndDateFilter(''); setStatusFilter('All'); }}
               className="text-[10px] text-indigo-600 hover:text-indigo-800 font-bold ml-2 uppercase tracking-wider"
             >
               Clear
             </button>
           )}
         </div>
-        <div className="text-[10px] text-slate-400 font-medium italic">
-          Menampilkan {filteredTasks.length} entri
+        <div className="flex items-center gap-4">
+          <div className="text-[10px] text-slate-400 font-medium italic">
+            Menampilkan {filteredTasks.length} entri
+          </div>
+          <button 
+            onClick={handleExportExcel}
+            className="flex items-center gap-2 bg-slate-100 hover:bg-slate-200 text-slate-700 px-3 py-1.5 border border-slate-300 rounded text-[10px] font-bold uppercase tracking-widest transition-colors"
+          >
+            <Download size={12} /> Export Excel
+          </button>
         </div>
       </div>
 
@@ -121,12 +174,28 @@ export default function TableView({ tasks, onEditTask }: TableViewProps) {
                           {isOverdue && task.status !== 'Closed' ? 'Overdue' : task.status}
                         </span>
                       </td>
-                      <td className="px-6 py-4 text-right">
+                      <td className="px-6 py-4 text-right whitespace-nowrap">
+                        <button 
+                          onClick={() => onViewTask(task)}
+                          className="text-slate-500 hover:text-slate-800 p-1 rounded hover:bg-slate-100 transition-colors inline-flex border border-transparent hover:border-slate-200 mr-2"
+                        >
+                          <Eye size={14} />
+                        </button>
                         <button 
                           onClick={() => onEditTask(task)}
-                          className="text-indigo-600 hover:text-indigo-800 p-1 rounded hover:bg-slate-100 transition-colors inline-flex border border-transparent hover:border-slate-200"
+                          className="text-indigo-600 hover:text-indigo-800 p-1 rounded hover:bg-slate-100 transition-colors inline-flex border border-transparent hover:border-slate-200 mr-2"
                         >
                           <Edit2 size={14} />
+                        </button>
+                        <button 
+                          onClick={() => {
+                            if (window.confirm('Yakin ingin menghapus tugas ini?')) {
+                              onDeleteTask(task.id);
+                            }
+                          }}
+                          className="text-rose-600 hover:text-rose-800 p-1 rounded hover:bg-slate-100 transition-colors inline-flex border border-transparent hover:border-slate-200"
+                        >
+                          <Trash2 size={14} />
                         </button>
                       </td>
                     </tr>

@@ -14,6 +14,7 @@ export default function App() {
   const [viewDepartment, setViewDepartment] = useState<string>('All');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingTask, setEditingTask] = useState<Task | undefined>(undefined);
+  const [isViewMode, setIsViewMode] = useState(false);
   const [isEditingProfile, setIsEditingProfile] = useState(false);
   const [nameInput, setNameInput] = useState('');
   const [roleInput, setRoleInput] = useState('Staff');
@@ -157,11 +158,19 @@ export default function App() {
 
   const handleOpenNewTask = () => {
     setEditingTask(undefined);
+    setIsViewMode(false);
     setIsModalOpen(true);
   };
 
   const handleEditTask = (task: Task) => {
     setEditingTask(task);
+    setIsViewMode(false);
+    setIsModalOpen(true);
+  };
+
+  const handleViewTask = (task: Task) => {
+    setEditingTask(task);
+    setIsViewMode(true);
     setIsModalOpen(true);
   };
 
@@ -175,7 +184,8 @@ export default function App() {
   };
 
   // Check for overdue or nearing due notifications (just a simple count for UI)
-  const overdueCount = filteredTasks.filter(t => t.status !== 'Closed' && new Date(t.dueDate).getTime() < new Date().getTime()).length;
+  const overdueTasks = filteredTasks.filter(t => t.status !== 'Closed' && new Date(t.dueDate).getTime() < new Date().getTime());
+  const overdueCount = overdueTasks.length;
 
   return (
     <div className="flex h-screen bg-slate-50 text-slate-900 font-sans overflow-hidden">
@@ -240,13 +250,38 @@ export default function App() {
           <div className="flex items-center gap-6">
             <div className="flex items-center gap-3">
               <span className="h-6 w-px bg-slate-200 mx-2 hidden sm:block"></span>
-              <div className="relative cursor-pointer text-slate-500 hover:text-slate-800">
-                <Bell size={20} />
-                {overdueCount > 0 && (
-                  <span className="absolute -top-1 -right-1 w-4 h-4 bg-rose-500 text-white text-[10px] flex items-center justify-center rounded-full font-bold shadow-sm">
-                    {overdueCount}
-                  </span>
-                )}
+              <div className="relative group text-slate-500 hover:text-slate-800">
+                <div className="cursor-pointer p-1">
+                  <Bell size={20} />
+                  {overdueCount > 0 && (
+                    <span className="absolute top-0 right-0 w-4 h-4 bg-rose-500 text-white text-[10px] flex items-center justify-center rounded-full font-bold shadow-sm">
+                      {overdueCount}
+                    </span>
+                  )}
+                </div>
+                
+                {/* Notification Dropdown */}
+                <div className="absolute right-0 top-8 mt-2 w-72 bg-white border border-slate-200 rounded shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-50 overflow-hidden">
+                  <div className="bg-slate-50 border-b border-slate-200 px-4 py-2">
+                    <h3 className="text-xs font-bold uppercase tracking-widest text-slate-700">Notifikasi Task Kritis</h3>
+                  </div>
+                  <div className="max-h-64 overflow-y-auto">
+                    {overdueTasks.length === 0 ? (
+                      <div className="p-4 text-center text-xs text-slate-500">
+                        Tidak ada task yang overdue.
+                      </div>
+                    ) : (
+                      overdueTasks.map(t => (
+                        <div key={t.id} className="p-3 border-b border-slate-100 hover:bg-slate-50 transition-colors">
+                          <p className="text-xs font-bold text-slate-800 mb-1">{t.description}</p>
+                          <p className="text-[10px] text-slate-500 uppercase tracking-widest">
+                            Staff: {t.staffName} • Due: {new Date(t.dueDate).toLocaleDateString('id-ID', { day: '2-digit', month: '2-digit', year: 'numeric' })}
+                          </p>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                </div>
               </div>
             </div>
 
@@ -311,7 +346,7 @@ export default function App() {
 
           {activeTab === 'dashboard' && <Dashboard tasks={filteredTasks} filterDept={viewDepartment as any} />}
           {activeTab === 'kanban' && <KanbanBoard tasks={filteredTasks} onEditTask={handleEditTask} />}
-          {activeTab === 'list' && <TableView tasks={filteredTasks} onEditTask={handleEditTask} />}
+          {activeTab === 'list' && <TableView tasks={filteredTasks} onEditTask={handleEditTask} onDeleteTask={deleteTask} onViewTask={handleViewTask} />}
           {activeTab === 'audit' && <ActivityLogView logs={logs} />}
 
         </div>
@@ -324,6 +359,7 @@ export default function App() {
         onSave={handleSaveTask}
         currentUser={currentUser}
         initialData={editingTask}
+        isViewMode={isViewMode}
       />
 
     </div>

@@ -26,7 +26,7 @@ export default function Dashboard({ tasks, filterDept }: DashboardProps) {
   ];
 
   // Group by department if 'All' is selected, else group by Staff
-  const barData = [];
+  const barData: any[] = [];
   if (filterDept === 'All') {
     const depts = ['Finance', 'HR', 'GA'];
     depts.forEach(d => {
@@ -54,7 +54,7 @@ export default function Dashboard({ tasks, filterDept }: DashboardProps) {
 
   return (
     <div className="flex flex-col gap-6">
-      
+
       {/* KPI Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
         <StatCard 
